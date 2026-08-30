@@ -12,6 +12,10 @@ Research notes and reference material for this project.
   by kind of criticism (measurement, construct, predictive, type-specific,
   epistemic, ethical, commercial), plus a per-instrument severity scorecard and
   what survives the critique.
+- [`quiz-design.md`](quiz-design.md) — design record for this repo's own web
+  quiz (Trait Compass): every feature mapped to the criticism it answers, the
+  archetype scheme and its justification, data provenance, and the criticisms
+  the quiz deliberately does not claim to fix.
 
 ## Conventions
 
