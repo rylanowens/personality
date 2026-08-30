@@ -140,6 +140,13 @@ window.Results = (function () {
         " — " + closeness + " (roughly " + pctGap + " percentile point" + (pctGap === 1 ? "" : "s") + " away): " + nb.reason + "."));
       card.appendChild(line);
     });
+
+    var all = el("p", "quiet");
+    var link = el("a", null, "Browse all 51 archetypes");
+    link.href = "archetypes.html";
+    all.appendChild(link);
+    all.appendChild(document.createTextNode(" — including the neighbors above."));
+    card.appendChild(all);
     return card;
   }
 

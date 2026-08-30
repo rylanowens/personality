@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="All 51 Trait Compass archetypes: 40 pairs, 10 single poles, and the balanced profile — with the scores that define each.">
+<title>The 51 archetypes — Trait Compass</title>
+<link rel="stylesheet" href="css/quiz.css">
+<style>
+  .gallery h2 { margin-top: 2.4rem; }
+  .pair-group-title { margin: 1.6rem 0 0.2rem; font-size: 1.02rem; color: var(--ink-soft); }
+  details.arch {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    margin: 0.55rem 0;
+    padding: 0 1rem;
+  }
+  details.arch summary {
+    cursor: pointer;
+    padding: 0.75rem 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+  details.arch summary::-webkit-details-marker { display: none; }
+  details.arch summary .arch-name { font-weight: 650; }
+  details.arch summary .chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  details.arch summary .chip { font-size: 0.78rem; padding: 0.15rem 0.6rem; }
+  details.arch .arch-body { padding: 0.2rem 0 1rem; }
+  details.arch .arch-body p { margin: 0.5rem 0; font-size: 0.95rem; }
+  .arch-summary-line { margin: 0.1rem 0 0.6rem; color: var(--ink-soft); font-size: 0.93rem; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html">Trait Compass</a>
+  <nav>
+    <a href="index.html#intro">Take the quiz</a>
+    <a href="about.html">How it works</a>
+  </nav>
+</header>
+
+<main id="main" class="gallery">
+  <h1>The 51 archetypes</h1>
+  <p class="lede">
+    An archetype names only what is genuinely distinctive in a profile — the
+    one or two dimensions that sit clearly away from typical (beyond the
+    disclosed threshold), with their directions. Two strong dimensions give a
+    pair archetype (40 of those), one gives a single-pole archetype (10), and
+    a profile with no strong outlier gets the balanced archetype. Reading
+    someone else's entry below, remember what it is: a summary of two numbers,
+    not a species of person — and every writeup lists costs, because every
+    profile pays for its strengths somewhere.
+  </p>
+  <p class="quiet">
+    Dimensions: <strong>N</strong> Negative Emotionality · <strong>E</strong> Extraversion ·
+    <strong>O</strong> Openness · <strong>A</strong> Agreeableness ·
+    <strong>C</strong> Conscientiousness. "High/Low" here means beyond roughly
+    the 66th/34th percentile against adult norms — see
+    <a href="about.html">the methods page</a> for the exact rules.
+  </p>
+  <div id="gallery-root"></div>
+</main>
+
+<footer class="site-footer">
+  <p><a href="index.html#intro">Take the quiz</a> &middot; <a href="about.html">Methods &amp; transparency</a></p>
+  <p class="quiet">For reflection, not for decisions about people.</p>
+</footer>
+
+<script src="data/items.js"></script>
+<script src="data/archetypes.js"></script>
+<script>
+(function () {
+  "use strict";
+  var DOMAINS = ["N", "E", "O", "A", "C"];
+  var root = document.getElementById("gallery-root");
+
+  function el(tag, className, text) {
+    var e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function chipText(dom, sign) {
+    return (sign === "+" ? "High " : "Low ") + window.QUIZ_ITEMS.domainNames[dom];
+  }
+
+  // Parse an id like "N+O-", "E+", or "BAL" into [{domain, sign}, ...].
+  function parseId(id) {
+    if (id === "BAL") return [];
+    var out = [];
+    for (var i = 0; i < id.length; i += 2) {
+      out.push({ domain: id.charAt(i), sign: id.charAt(i + 1) });
+    }
+    return out;
+  }
+
+  function entry(id) {
+    var a = window.QUIZ_ARCHETYPES.byId[id];
+    var d = document.createElement("details");
+    d.className = "arch";
+    d.id = id;
+
+    var summary = document.createElement("summary");
+    summary.appendChild(el("span", "arch-name", a.name));
+    var chips = el("span", "chips");
+    var parts = parseId(id);
+    if (parts.length) {
+      parts.forEach(function (p) {
+        chips.appendChild(el("span", "chip", chipText(p.domain, p.sign)));
+      });
+    } else {
+      chips.appendChild(el("span", "chip", "No strong outlier"));
+    }
+    summary.appendChild(chips);
+    d.appendChild(summary);
+
+    var body = el("div", "arch-body");
+    body.appendChild(el("p", "arch-summary-line", a.summary));
+    body.appendChild(el("p", null, a.body));
+    var costs = el("p");
+    costs.appendChild(el("strong", null, "What this profile pays: "));
+    costs.appendChild(document.createTextNode(a.costs));
+    body.appendChild(costs);
+    var growth = el("p");
+    growth.appendChild(el("strong", null, "Where it tends to go next: "));
+    growth.appendChild(document.createTextNode(a.growth));
+    body.appendChild(growth);
+    d.appendChild(body);
+    return d;
+  }
+
+  // Pair archetypes, grouped by domain combination.
+  root.appendChild(el("h2", null, "Pair archetypes (40)"));
+  root.appendChild(el("p", "quiet",
+    "Two dimensions clearly away from typical. Each pairing of dimensions has four variants — one per combination of directions."));
+  for (var i = 0; i < DOMAINS.length; i++) {
+    for (var j = i + 1; j < DOMAINS.length; j++) {
+      var d1 = DOMAINS[i], d2 = DOMAINS[j];
+      root.appendChild(el("p", "pair-group-title",
+        window.QUIZ_ITEMS.domainNames[d1] + " × " + window.QUIZ_ITEMS.domainNames[d2]));
+      ["++", "+-", "-+", "--"].forEach(function (signs) {
+        root.appendChild(entry(d1 + signs.charAt(0) + d2 + signs.charAt(1)));
+      });
+    }
+  }
+
+  // Single poles.
+  root.appendChild(el("h2", null, "Single-pole archetypes (10)"));
+  root.appendChild(el("p", "quiet",
+    "Exactly one dimension clearly away from typical — the label says that, instead of inventing a second axis from noise."));
+  DOMAINS.forEach(function (d) {
+    ["+", "-"].forEach(function (s) { root.appendChild(entry(d + s)); });
+  });
+
+  // Balanced.
+  root.appendChild(el("h2", null, "The balanced profile (1)"));
+  root.appendChild(el("p", "quiet",
+    "No dimension clearly away from typical — a real and somewhat uncommon result with its own signature."));
+  root.appendChild(entry("BAL"));
+
+  // Deep-link support: open and scroll to a hash target (e.g. archetypes.html#N+O-).
+  var hash = decodeURIComponent(location.hash.replace("#", ""));
+  if (hash && window.QUIZ_ARCHETYPES.byId[hash]) {
+    var target = document.getElementById(hash);
+    if (target) {
+      target.open = true;
+      target.scrollIntoView();
+    }
+  }
+})();
+</script>
+</body>
+</html>
