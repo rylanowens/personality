@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Full methods disclosure for Trait Compass: items, scoring math, norms, archetype rules, and honest limits.">
+<title>How Trait Compass works</title>
+<link rel="stylesheet" href="css/quiz.css">
+<style>
+  .methods h2 { margin-top: 2.2rem; }
+  .methods table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  .methods th, .methods td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--line); }
+  .methods code { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 0.05rem 0.35rem; }
+  .methods .example { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1.1rem; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="index.html">Trait Compass</a>
+  <nav><a href="index.html#intro">Take the quiz</a></nav>
+</header>
+
+<main id="main" class="methods">
+  <h1>How this works — all of it</h1>
+  <p class="lede">
+    Most personality products treat their items, scoring, and norms as trade
+    secrets. This page is the opposite commitment: everything the quiz does is
+    described here, and the entire implementation is
+    <a href="https://github.com/rylanowens/personality">readable source code</a>.
+    The design rationale — including which documented criticisms of personality
+    testing each choice answers — is in the project's
+    <a href="https://github.com/rylanowens/personality/blob/main/docs/quiz-design.md">design notes</a>.
+  </p>
+
+  <h2>What the quiz measures</h2>
+  <p>
+    The five-factor ("Big Five") model of personality: <strong>Negative
+    Emotionality</strong> (often called Neuroticism), <strong>Extraversion</strong>,
+    <strong>Openness</strong>, <strong>Agreeableness</strong>, and
+    <strong>Conscientiousness</strong>, each measured through six narrower
+    facets (30 facets total). The five-factor structure is the closest thing
+    personality science has to a consensus taxonomy: it emerged repeatedly from
+    independent research programs and replicates across dozens of languages.
+    Facet-level detail is reported because facets routinely predict outcomes
+    better than their parent domains — and because two people with identical
+    domain scores can differ meaningfully underneath.
+  </p>
+
+  <h2>The items</h2>
+  <p>
+    The instrument is the <strong>IPIP-NEO-120</strong>: the 120-item inventory
+    assembled by John A. Johnson (2014) from the International Personality Item
+    Pool. IPIP items are <strong>public domain</strong> — one of the very few
+    validated item families that can be freely embedded — and every item this
+    quiz shows is in
+    <a href="https://github.com/rylanowens/personality/blob/main/data/items.js">data/items.js</a>,
+    exactly as administered, with its facet assignment and scoring direction.
+  </p>
+  <ul>
+    <li>120 statements, 4 per facet, answered on a 5-point accuracy scale
+        ("Very inaccurate" … "Very accurate").</li>
+    <li>65 items are scored positively; <strong>55 are reverse-keyed</strong>
+        (disagreement raises the score). The mix counters acquiescence bias —
+        the tendency to drift toward "agree".</li>
+    <li>Item order is Johnson's original administration order (items cycle
+        through the 30 facets), kept for comparability with his norms. Items
+        are not randomized.</li>
+    <li>Two <strong>instructed-response reading checks</strong> ("answer
+        Moderately inaccurate here") are interleaved at fixed positions. They
+        are never scored; they only inform the low-engagement notice.</li>
+    <li>Provenance: item texts, facet map, and keying were cross-checked between
+        two independent packagings of Johnson's instrument
+        (<a href="https://www.npmjs.com/package/@alheimsins/b5-johnson-120-ipip-neo-pi-r">Alheimsins b5-johnson-120</a> v6.0.13
+        and <a href="https://pypi.org/project/five-factor-e/">five-factor-e</a> v1.13.1,
+        retrieved 2026-08-30); they agreed on 120/120 facet assignments and
+        keyings and 119/120 texts verbatim (item 58 differs by one
+        conjunction between packagings; the IPIP original wording is used).</li>
+  </ul>
+
+  <h2>Scoring, in full</h2>
+  <div class="example">
+    <p style="margin-top:0"><strong>Worked example.</strong> The Anxiety facet (N1) has four items.
+    Suppose you answer 4, 2, 5, 3 (where 1–5 runs from "Very inaccurate" to "Very accurate"):</p>
+    <ol>
+      <li>Reverse-keyed items are flipped: <code>scored = 6 − response</code>.
+          If the second item were reverse-keyed, your 2 becomes a 4.</li>
+      <li>Facet raw score = sum of its 4 scored items → here 4+4+5+3 = 16
+          (possible range 4–20). Domain raw = sum of its 6 facet raws
+          (range 24–120).</li>
+      <li>Standardize against the norm table:
+          <code>z = (raw − mean) ÷ sd</code>. If the N1 norm is mean 12.26,
+          sd 3.72, then z = (16 − 12.26) ÷ 3.72 ≈ 1.01.</li>
+      <li>Percentile = Φ(z), the standard normal cumulative distribution
+          → Φ(1.01) ≈ 84th percentile.</li>
+    </ol>
+    <p style="margin-bottom:0">Every scale on your results page is computed exactly this way —
+    see <a href="https://github.com/rylanowens/personality/blob/main/js/scoring.js">js/scoring.js</a>.</p>
+  </div>
+  <p>
+    Percentiles therefore assume scale scores are approximately normally
+    distributed in the norm sample. That is an approximation (bounded sums are
+    never perfectly normal, especially near the extremes) — treat 99th/1st
+    percentile results as "far out on this dimension," not as precise
+    one-in-a-hundred claims.
+  </p>
+
+  <h2>The norms</h2>
+  <p>
+    Raw scores become percentiles by comparison with Johnson's IPIP-NEO norm
+    tables, as distributed with his scoring program: the <strong>ages 21–40
+    cohort, male and female tables averaged</strong>. Johnson's norm data come
+    from a very large internet sample (the 2014 paper reports N = 619,150 for
+    the 120-item form). The exact means and SDs used are in
+    <a href="https://github.com/rylanowens/personality/blob/main/data/norms.js">data/norms.js</a>.
+    Honest caveats:
+  </p>
+  <ul>
+    <li>It is an internet convenience sample, not a census-representative one.</li>
+    <li>One combined table is used for everyone. Average scores differ somewhat
+        by sex and age (e.g., Negative Emotionality declines with age), so if
+        you are far from the 21–40 combined reference group, your percentiles
+        are correspondingly approximate.</li>
+    <li>No demographic data is collected — the accuracy cost of one shared
+        table was chosen over the privacy and friction cost of asking.</li>
+  </ul>
+
+  <h2>Confidence bands</h2>
+  <p>
+    Every score is shown with a shaded band: the <strong>standard error of
+    measurement</strong>, computed as <code>SEM = sd × √(1 − α)</code> where α
+    is scale reliability. Reliabilities are <em>assumed working values</em>
+    (facet α = 0.75, domain α = 0.88, in line with typical published values for
+    this inventory — Johnson 2014 reports mean facet α ≈ 0.76), not values
+    re-estimated on this site's users; they are disclosed in
+    <code>data/norms.js</code>. Facet bands are wide because four items is a
+    short scale — that width is honest. Scores inside your band are
+    statistically indistinguishable from yours.
+  </p>
+
+  <h2>The archetype rules, exactly</h2>
+  <p>
+    The archetype is a <em>summary of your most distinctive dimensions</em>,
+    never a replacement for the scores. The assignment rule
+    (<a href="https://github.com/rylanowens/personality/blob/main/js/archetype.js">js/archetype.js</a>):
+  </p>
+  <ul>
+    <li>Rank your five domain z-scores by absolute value.</li>
+    <li>Two or more at <strong>|z| ≥ 0.4</strong> (roughly beyond the
+        34th–66th percentile band): the top two, with their directions, name a
+        <em>pair archetype</em> — 40 exist.</li>
+    <li>Exactly one: a <em>single-pole archetype</em> — 10 exist.</li>
+    <li>None: the <em>balanced archetype</em>. 51 archetypes total.</li>
+  </ul>
+  <p>
+    This deliberately avoids the classic type-test design of splitting all five
+    dimensions at their midpoints — which forces near-average scores to pick a
+    side and is the main documented reason type labels flip on retest. Your
+    results page always shows how close you sit to <strong>neighboring
+    archetypes</strong> and which score would tip you there; gaps are expressed
+    in approximate percentile points (a local conversion near the threshold).
+    If a retake lands you on a neighbor, that is the labeling layer working as
+    designed — compare the continuous scores, which move far less.
+  </p>
+
+  <h2>Retest honesty</h2>
+  <p>
+    Trait scale scores are quite stable over weeks-to-months (published
+    retest correlations for inventories like this are typically around
+    .8, higher for domains than facets) — but "quite stable" is not "fixed":
+    mood, recent events, and measurement error move individual sittings, and
+    average trait levels genuinely drift across adulthood (conscientiousness
+    and agreeableness tend to rise; negative emotionality tends to fall).
+    This quiz treats that as a feature to measure rather than hide: results
+    are dated, past results are kept on your device, and the compare view
+    shows the actual drift dimension by dimension. No claim is made that your
+    result is a permanent identity, because that claim would be false.
+  </p>
+
+  <h2>Quality flags</h2>
+  <p>
+    Three low-engagement signals are computed, disclosed here in full: missing
+    either instructed reading check; long runs of identical answers (15+ in a
+    row, or near-zero response variance); and finishing in under 6 minutes.
+    Flags never block or discard a result — they add a visible notice
+    suggesting the scores be read skeptically and the quiz retaken unhurried.
+  </p>
+
+  <h2>Privacy</h2>
+  <p>
+    Everything runs in your browser. Answers and results are never transmitted
+    anywhere; there is no server, no analytics, and no account. Results persist
+    only in this browser's local storage, and in share links — a share link
+    encodes your 30 facet scores, the date, and the quality flags (35
+    characters; format documented in
+    <a href="https://github.com/rylanowens/personality/blob/main/js/encode.js">js/encode.js</a>)
+    and reveals them to anyone you give it to, so share deliberately.
+  </p>
+
+  <h2>What this quiz must not be used for</h2>
+  <ul>
+    <li><strong>Not for hiring, admissions, or any decision about another
+        person.</strong> Self-report measures are fakeable under stakes, and
+        the evidence for personality-based selection without job analysis and
+        local validation is weak. (The project's
+        <a href="https://github.com/rylanowens/personality/blob/main/docs/criticisms.md">criticisms review</a>
+        covers this in detail, including the legal exposure employers have
+        incurred.)</li>
+    <li><strong>Not a clinical instrument.</strong> It measures ordinary trait
+        variation, not disorders; no item probes medical or psychiatric
+        territory. The Negative Emotionality scales describe normal-range
+        emotional style — they cannot detect, rule out, or diagnose anything.
+        If your mood or anxiety is persistently heavy, a professional is the
+        right tool, not a quiz.</li>
+    <li><strong>Not a verdict.</strong> Scores describe current tendencies
+        relative to other adults; they are not capacities, destinies, or
+        excuses.</li>
+  </ul>
+
+  <h2>What "accuracy" claims you will not see here</h2>
+  <p>
+    You will not see "97% of users say their results are accurate" — felt
+    accuracy is the one kind of evidence a personality result can earn while
+    being meaningless, since generic flattering text reliably feels accurate
+    (the Barnum effect). The honest basis for this quiz is: public-domain
+    items with published psychometrics, disclosed norms, disclosed math, and
+    result prose written to be specific enough that the opposite profile would
+    reject it. Where the numbers are approximate, the page saying so is this
+    one.
+  </p>
+
+  <h2>Sources</h2>
+  <ul>
+    <li>Johnson, J. A. (2014). Measuring thirty facets of the Five Factor Model
+        with a 120-item public domain inventory: Development of the
+        IPIP-NEO-120. <em>Journal of Research in Personality, 51</em>, 78–89.</li>
+    <li>Goldberg, L. R., et al. (2006). The International Personality Item Pool
+        and the future of public-domain personality measures.
+        <em>Journal of Research in Personality, 40</em>, 84–96.
+        (<a href="https://ipip.ori.org/">ipip.ori.org</a>)</li>
+    <li>Project research notes:
+        <a href="https://github.com/rylanowens/personality/blob/main/docs/personality-assessments.md">survey of major assessments</a> ·
+        <a href="https://github.com/rylanowens/personality/blob/main/docs/criticisms.md">criticisms and what survives</a> ·
+        <a href="https://github.com/rylanowens/personality/blob/main/docs/quiz-design.md">design decisions</a>.</li>
+  </ul>
+</main>
+
+<footer class="site-footer">
+  <p><a href="index.html#intro">Take the quiz</a></p>
+  <p class="quiet">For reflection, not for decisions about people.</p>
+</footer>
+</body>
+</html>

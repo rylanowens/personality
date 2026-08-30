@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scoring tests</title>
+<style>
+  body { font: 14px/1.5 ui-monospace, monospace; margin: 2rem; background: #fafaf7; color: #222; }
+  .pass { color: #1a7f37; }
+  .fail { color: #b91c1c; font-weight: bold; }
+  h1 { font-size: 1.2rem; }
+</style>
+</head>
+<body>
+<h1>Quiz engine tests</h1>
+<div id="out"></div>
+
+<script src="../data/items.js"></script>
+<script src="../data/norms.js"></script>
+<script src="../js/scoring.js"></script>
+<script src="../js/encode.js"></script>
+<script src="../js/archetype.js"></script>
+<script src="../data/archetypes.js"></script>
+<script>
+(function () {
+  "use strict";
+  var results = [];
+  function test(name, fn) {
+    try {
+      fn();
+      results.push({ name: name, ok: true });
+    } catch (e) {
+      results.push({ name: name, ok: false, error: String(e && e.message || e) });
+    }
+  }
+  function assert(cond, msg) {
+    if (!cond) throw new Error(msg || "assertion failed");
+  }
+  function close(a, b, eps, msg) {
+    if (Math.abs(a - b) > eps) throw new Error((msg || "") + " expected " + b + " got " + a);
+  }
+
+  var ITEMS = window.QUIZ_ITEMS.items;
+  var S = window.Scoring;
+  var E = window.Encode;
+
+  function answersAll(v) {
+    var a = {};
+    ITEMS.forEach(function (it) { a[it.n] = v; });
+    return a;
+  }
+
+  // --- data sanity ---
+  test("data: 120 items, 4 per facet, 24 per domain", function () {
+    assert(ITEMS.length === 120, "count");
+    var perFacet = {}, perDomain = {};
+    ITEMS.forEach(function (it) {
+      perFacet[it.domain + it.facet] = (perFacet[it.domain + it.facet] || 0) + 1;
+      perDomain[it.domain] = (perDomain[it.domain] || 0) + 1;
+    });
+    S.FACET_ORDER.forEach(function (k) { assert(perFacet[k] === 4, "facet " + k); });
+    ["N","E","O","A","C"].forEach(function (d) { assert(perDomain[d] === 24, "domain " + d); });
+  });
+
+  test("data: 55 reverse-keyed items (Johnson's table)", function () {
+    var minus = ITEMS.filter(function (it) { return it.keyed === -1; }).length;
+    assert(minus === 55, "got " + minus);
+  });
+
+  test("data: administration order cycles facets (n -> slot)", function () {
+    var DOM = ["N", "E", "O", "A", "C"];
+    ITEMS.forEach(function (it) {
+      var slot = (it.n - 1) % 30;
+      assert(it.domain === DOM[slot % 5], "domain of item " + it.n);
+      assert(it.facet === Math.floor(slot / 5) + 1, "facet of item " + it.n);
+    });
+  });
+
+  test("data: known items spot check", function () {
+    assert(ITEMS[0].text === "Worry about things.", "item 1 text");
+    assert(ITEMS[0].domain === "N" && ITEMS[0].facet === 1 && ITEMS[0].keyed === 1, "item 1 meta");
+    assert(ITEMS[1].text === "Make friends easily.", "item 2 text");
+    assert(ITEMS[8].keyed === -1, "item 9 is reverse-keyed");
+    var norm = window.QUIZ_NORMS;
+    assert(norm.facets.N1 && norm.domains.C, "norms present");
+  });
+
+  // --- scoring ---
+  test("all-neutral protocol: every facet raw = 12, every domain = 72", function () {
+    var raws = S.scoreFacets(answersAll(3), ITEMS);
+    S.FACET_ORDER.forEach(function (k) { assert(raws[k] === 12, k + "=" + raws[k]); });
+    var dom = S.scoreDomains(raws);
+    ["N","E","O","A","C"].forEach(function (d) { assert(dom[d] === 72, d); });
+  });
+
+  test("all-agree protocol: raw = 5*plus + 1*minus per facet", function () {
+    var raws = S.scoreFacets(answersAll(5), ITEMS);
+    var expected = {};
+    ITEMS.forEach(function (it) {
+      var k = it.domain + it.facet;
+      expected[k] = (expected[k] || 0) + (it.keyed === 1 ? 5 : 1);
+    });
+    S.FACET_ORDER.forEach(function (k) { assert(raws[k] === expected[k], k); });
+  });
+
+  test("all-disagree mirrors all-agree around 12", function () {
+    var hi = S.scoreFacets(answersAll(5), ITEMS);
+    var lo = S.scoreFacets(answersAll(1), ITEMS);
+    S.FACET_ORDER.forEach(function (k) {
+      assert(hi[k] + lo[k] === 24, k + ": " + hi[k] + "+" + lo[k]);
+    });
+  });
+
+  test("missing answer throws", function () {
+    var a = answersAll(3);
+    delete a[60];
+    var threw = false;
+    try { S.scoreFacets(a, ITEMS); } catch (e) { threw = true; }
+    assert(threw, "should throw");
+  });
+
+  // --- normal CDF / scale scores ---
+  test("phi known values", function () {
+    close(S.phi(0), 0.5, 1e-6, "phi(0)");
+    close(S.phi(1), 0.8413447, 1e-5, "phi(1)");
+    close(S.phi(-1.96), 0.0249979, 1e-5, "phi(-1.96)");
+    close(S.phi(3), 0.9986501, 1e-5, "phi(3)");
+  });
+
+  test("scaleScore at the norm mean is the 50th percentile", function () {
+    var s = S.scaleScore(12, { mean: 12, sd: 3 }, 0.75);
+    close(s.pct, 50, 1e-6);
+    assert(s.band[0] < 50 && s.band[1] > 50, "band brackets 50");
+    close(s.band[1] - 50, 50 - s.band[0], 1e-6, "band symmetric at mean");
+  });
+
+  test("computeResult end-to-end shape", function () {
+    var r = S.computeResult(answersAll(3), { durationMs: 20 * 60 * 1000 });
+    assert(r.facets.N1 && typeof r.facets.N1.pct === "number", "facet scores");
+    assert(r.domains.C && typeof r.domains.C.z === "number", "domain scores");
+    assert(r.flags && r.flags.straightLining === true, "all-3s should straight-line flag");
+  });
+
+  // --- quality flags ---
+  test("flags: varied honest protocol is clean", function () {
+    var a = {};
+    ITEMS.forEach(function (it, i) { a[it.n] = (i % 5) + 1; });
+    var f = S.qualityFlags(a, ITEMS, [
+      { expected: 2, given: 2 },
+      { expected: 5, given: 5 },
+    ], 20 * 60 * 1000);
+    assert(!f.flagged, JSON.stringify(f.reasons));
+  });
+
+  test("flags: attention failures counted", function () {
+    var a = {};
+    ITEMS.forEach(function (it, i) { a[it.n] = (i % 5) + 1; });
+    var f = S.qualityFlags(a, ITEMS, [
+      { expected: 2, given: 4 },
+      { expected: 5, given: 5 },
+    ], 20 * 60 * 1000);
+    assert(f.attentionFailed === 1 && f.flagged, "one failure");
+  });
+
+  test("flags: under 6 minutes is too fast", function () {
+    var a = {};
+    ITEMS.forEach(function (it, i) { a[it.n] = (i % 5) + 1; });
+    var f = S.qualityFlags(a, ITEMS, [], 5 * 60 * 1000);
+    assert(f.tooFast && f.flagged, "too fast");
+  });
+
+  // --- encode/decode ---
+  test("encode/decode round-trips 200 random score vectors", function () {
+    for (var t = 0; t < 200; t++) {
+      var raws = {};
+      S.FACET_ORDER.forEach(function (k) {
+        raws[k] = 4 + Math.floor(Math.random() * 17);
+      });
+      var when = Date.UTC(2026, 0, 1) + Math.floor(Math.random() * 3000) * 86400000;
+      var code = E.encode(raws, when, { attentionFailed: t % 2, straightLining: false, tooFast: t % 3 === 0 });
+      assert(code.length === 35, "length " + code.length);
+      var back = E.decode(code);
+      assert(back, "decodes");
+      S.FACET_ORDER.forEach(function (k) {
+        assert(back.facetRaws[k] === raws[k], k);
+      });
+      assert(back.takenAt === when - (when - Date.UTC(2026,0,1)) % 86400000, "date preserved to the day");
+    }
+  });
+
+  test("decode rejects malformed codes", function () {
+    assert(E.decode("") === null, "empty");
+    assert(E.decode("2" + new Array(35).join("a")) === null, "bad version");
+    assert(E.decode("1a00" + new Array(31).join("a")) === null, "short");
+    assert(E.decode("10000" + new Array(30).join("z")) === null, "facet char out of range");
+  });
+
+  test("decoded raws recompute to a full result", function () {
+    var raws = {};
+    S.FACET_ORDER.forEach(function (k) { raws[k] = 12; });
+    var back = E.decode(E.encode(raws, Date.now(), null));
+    var r = S.resultFromFacetRaws(back.facetRaws, {});
+    close(r.domainRaws.N, 72, 0, "domain raw");
+  });
+
+  // --- archetypes (skipped until archetype.js lands) ---
+  if (window.Archetype) {
+    var Z = function (n, e, o, a, c) { return { N: n, E: e, O: o, A: a, C: c }; };
+
+    test("archetype: two clear poles -> pair archetype", function () {
+      var r = window.Archetype.assign(Z(1.2, 0.1, -0.9, 0.2, 0.0));
+      assert(r.kind === "pair", r.kind);
+      assert(r.defining.length === 2, "two defining");
+      var keys = r.defining.map(function (d) { return d.domain + (d.sign > 0 ? "+" : "-"); }).sort().join(",");
+      assert(keys === "N+,O-", keys);
+    });
+
+    test("archetype: one pole -> single archetype", function () {
+      var r = window.Archetype.assign(Z(0.1, 0.9, 0.05, -0.2, 0.1));
+      assert(r.kind === "single", r.kind);
+      assert(r.defining[0].domain === "E" && r.defining[0].sign > 0, "E+");
+    });
+
+    test("archetype: flat profile -> balanced", function () {
+      var r = window.Archetype.assign(Z(0.1, -0.2, 0.05, 0.3, -0.1));
+      assert(r.kind === "balanced", r.kind);
+    });
+
+    test("archetype: threshold edge exactly 0.4 counts", function () {
+      var r = window.Archetype.assign(Z(0.4, 0.4, 0, 0, 0));
+      assert(r.kind === "pair", r.kind);
+    });
+
+    test("archetype: every assignment has a writeup and neighbors", function () {
+      for (var t = 0; t < 300; t++) {
+        var z = {};
+        ["N","E","O","A","C"].forEach(function (d) { z[d] = (Math.random() * 6) - 3; });
+        var r = window.Archetype.assign(z);
+        assert(r.id && window.QUIZ_ARCHETYPES.byId[r.id], "writeup for " + r.id);
+        assert(Array.isArray(r.neighbors), "neighbors array");
+        r.neighbors.forEach(function (nb) {
+          assert(window.QUIZ_ARCHETYPES.byId[nb.id], "neighbor writeup " + nb.id);
+          assert(nb.id !== r.id, "neighbor differs from assigned");
+        });
+      }
+    });
+
+    test("archetype: all 51 ids have name + writeup sections", function () {
+      var ids = Object.keys(window.QUIZ_ARCHETYPES.byId);
+      assert(ids.length === 51, "expected 51, got " + ids.length);
+      ids.forEach(function (id) {
+        var a = window.QUIZ_ARCHETYPES.byId[id];
+        assert(a.name && a.summary, id + " name/summary");
+        assert(a.body && a.costs && a.growth, id + " body/costs/growth");
+      });
+    });
+  }
+
+  // --- report ---
+  var out = document.getElementById("out");
+  var failed = results.filter(function (r) { return !r.ok; });
+  results.forEach(function (r) {
+    var div = document.createElement("div");
+    div.className = r.ok ? "pass" : "fail";
+    div.textContent = (r.ok ? "PASS " : "FAIL ") + r.name + (r.error ? " — " + r.error : "");
+    out.appendChild(div);
+  });
+  var h = document.createElement("p");
+  h.textContent = results.length + " tests, " + failed.length + " failed";
+  h.className = failed.length ? "fail" : "pass";
+  out.insertBefore(h, out.firstChild);
+  document.title = (failed.length ? "FAIL" : "PASS") + " " + results.length + " tests";
+  window.TEST_RESULTS = { total: results.length, failed: failed.length, failures: failed };
+})();
+</script>
+</body>
+</html>

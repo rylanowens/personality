@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A free, facet-level personality profile built on public-domain IPIP-NEO-120 items. Continuous scores, honest confidence bands, and an archetype that never hides the numbers underneath.">
+<title>Trait Compass</title>
+<link rel="stylesheet" href="css/quiz.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <a class="brand" href="#intro">Trait Compass</a>
+  <nav>
+    <a href="about.html">How it works</a>
+  </nav>
+</header>
+
+<main id="main">
+
+  <!-- ============ Intro / consent ============ -->
+  <section id="screen-intro" hidden>
+    <div class="intro-hero">
+      <h1>A personality profile that shows its work</h1>
+      <p class="lede">
+        120 statements, about 25 minutes. You get continuous scores on the five
+        major trait dimensions and all 30 facets beneath them, with honest
+        confidence bands — plus a shareable archetype that never hides the
+        numbers it came from.
+      </p>
+      <div class="intro-actions">
+        <button id="btn-start" class="primary big">Start the quiz</button>
+        <button id="btn-resume" class="secondary big" hidden>Resume where you left off</button>
+      </div>
+      <p id="intro-history-note" class="quiet" hidden></p>
+    </div>
+
+    <div class="intro-grid">
+      <div class="intro-card">
+        <h2>What it measures</h2>
+        <p>The Big Five trait dimensions — Negative Emotionality, Extraversion,
+        Openness, Agreeableness, and Conscientiousness — each broken into six
+        facets, using the public-domain IPIP-NEO-120 inventory
+        (Johnson, 2014). Scoring, items, and norms are fully disclosed on the
+        <a href="about.html">methods page</a>.</p>
+      </div>
+      <div class="intro-card">
+        <h2>What you get</h2>
+        <p>Percentile scores with confidence bands for every dimension and
+        facet, an archetype named for what is genuinely distinctive in your
+        profile, how close you sit to neighboring archetypes, and a
+        development section keyed to your actual scores.</p>
+      </div>
+      <div class="intro-card">
+        <h2>What it is not</h2>
+        <p>Not a hiring or selection tool, and not a clinical instrument —
+        it measures ordinary trait differences, not disorders. Your result is
+        an estimate from one sitting, not a permanent identity: scores drift
+        with mood, context, and age, and that is expected.</p>
+      </div>
+      <div class="intro-card">
+        <h2>Your data stays yours</h2>
+        <p>Everything runs in your browser. Answers and results are never sent
+        to any server. Results are saved on this device only, plus a share
+        link that you control.</p>
+      </div>
+    </div>
+
+    <p class="quiet center">
+      Answer as the person you actually are — not who you hope to be, and not
+      who you are on your worst day. There are no right answers and nobody to
+      impress.
+    </p>
+  </section>
+
+  <!-- ============ Quiz ============ -->
+  <section id="screen-quiz" hidden>
+    <div class="progress-wrap" aria-hidden="true">
+      <div class="progress-bar"><div id="progress-fill"></div></div>
+    </div>
+    <p id="progress-text" class="quiet center" aria-live="polite"></p>
+
+    <div class="item-card">
+      <p class="item-lead quiet">How accurately does this statement describe you?</p>
+      <h2 id="item-text" aria-live="polite"></h2>
+      <div id="likert" class="likert" role="radiogroup" aria-label="Your answer">
+        <!-- populated by quiz.js -->
+      </div>
+      <div class="quiz-nav">
+        <button id="btn-back" class="secondary">&larr; Back</button>
+        <span class="quiet keyboard-hint">Keys 1&ndash;5 answer &middot; &larr; goes back</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Results ============ -->
+  <section id="screen-results" hidden>
+    <div id="results-root"><!-- populated by results.js --></div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>
+    <a href="about.html">Methods &amp; transparency</a> &middot;
+    <a href="https://github.com/rylanowens/personality/blob/main/docs/quiz-design.md">Design notes</a>
+  </p>
+  <p class="quiet">
+    For reflection, not for decisions about people: not a hiring tool, not a
+    clinical instrument. Items from the public-domain
+    <a href="https://ipip.ori.org/">International Personality Item Pool</a>.
+  </p>
+</footer>
+
+<script src="data/items.js"></script>
+<script src="data/norms.js"></script>
+<script src="data/prose.js"></script>
+<script src="data/archetypes.js"></script>
+<script src="js/scoring.js"></script>
+<script src="js/encode.js"></script>
+<script src="js/archetype.js"></script>
+<script src="js/history.js"></script>
+<script src="js/results.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
