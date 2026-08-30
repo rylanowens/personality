@@ -395,7 +395,7 @@ side of the line.
 ## 6. Cross-cutting problems
 
 These apply to nearly everything above and are worth internalizing before
-building anything.
+building anything. See [`criticisms.md`](criticisms.md) for the full treatment.
 
 **The Barnum/Forer effect.** Forer (1949) gave students an identical vague
 personality description and had them rate its accuracy for themselves; the average
